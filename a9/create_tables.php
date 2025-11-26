@@ -194,6 +194,29 @@ GROUP BY p.ProductID, p.Name
 ORDER BY TotalRevenue DESC
 ";
 
+// View 4: High-Value Customer Identifier
+$sql view4 = "
+CREATE OR REPLACE VIEW VW_HIGH_VALUE_CUSTOMERS AS
+SELECT 
+    u.UserID,
+    u.FirstName || ' ' || u.LastName AS CustomerName,
+    SUM(op.Quantity * p.Price) AS TotalSpent
+FROM Users u
+JOIN Orders o ON u.UserID = o.UserID
+JOIN Order_Product op ON o.OrderID = op.OrderID
+JOIN Product p ON op.ProductID = p.ProductID
+GROUP BY u.UserID, u.FirstName, u.LastName
+HAVING SUM(op.Quantity * p.Price) > (
+    SELECT AVG(LineTotal) FROM (
+        SELECT SUM(op2.Quantity * p2.Price) AS LineTotal
+        FROM Orders o2
+        JOIN Order_Product op2 ON o2.OrderID = op2.OrderID
+        JOIN Product p2 ON op2.ProductID = p2.ProductID
+        GROUP BY o2.OrderID
+    )
+)
+";
+
 // Execute table creation
 $tables = [
     'Users' => $sql_users,
@@ -227,7 +250,8 @@ foreach ($tables as $name => $sql) {
 $views = [
     'Staff_Report_Summary' => $sql_view1,
     'VW_TOP_RATED_PRODUCTS' => $sql_view2,
-    'VW_SALES_SUMMARY' => $sql_view3
+    'VW_SALES_SUMMARY' => $sql_view3,
+    'HV_CUSTOMER_IDENTIFIER' => $sql_view4
 ];
 
 foreach ($views as $name => $sql) {
